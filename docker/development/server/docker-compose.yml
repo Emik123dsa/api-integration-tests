@@ -1,0 +1,146 @@
+# MIT License
+
+# Copyright (c) 2021 Emil Shari <emil.shari87@gmail.com>
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+version: "3.9"
+
+services:
+  server-template:
+    hostname: server-template
+    image: php/server-template
+    workdir: /var/www/template/server/dev/
+    build:
+      context: ../../../
+      dockerfile: docker/dev/server/lib/php/Dockerfile.dev-server
+      args:
+        SERVER_ENV: ${PHP_SERVER_ENV:-dev}
+        SERVER_HOST: ${PHP_SERVER_HOST:-0.0.0.0}
+        SERVER_PORT: ${PHP_SERVER_PORT:-8000}
+
+        DB_CONNECTION: ${PHP_DB_CONNECTION:-pgsql}
+        DB_HOST: ${PG_MASTER_HOST:-postgres-template-master}
+        DB_PORT: ${PG_MASTER_PORT:-5432}
+        DB_DATABASE: ${POSTGRES_DB:-postgres_db}
+        DB_USERNAME: ${POSTGRES_USER:-postgres_user}
+        DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres_password}
+
+        ELASTICSEARCH_HOST: ${ELASTICSEARCH_ELASTIC_HOST:-elasticsearch-elastic-template}
+        ELASTICSEARCH_PORT: ${ELASTICSEARCH_ELASTIC_PORT:-9200}
+        ELASTICSEARCH_SCHEME: ${ELASTICSEARCH_SCHEME:-null}
+
+        KAFKA_BROKERS: ${KAFKA_SEED_BROKER_HOST:-kafka-seed-broker-template}:2${KAFKA_SEED_BROKER_PORT:-9092}
+        KAFKA_CONSUMER_GROUP_ID: ${KAFKA_CONSUMER_GROUP_ID:-Template-Consumer-Group-Id}
+        KAFKA_CONSUMER_CLIENT_ID: ${KAFKA_CONSUMER_CLIENT_ID:-Template-Consumer-Client-Id}
+        KAFKA_AUTO_COMMIT: ${KAFKA_AUTO_COMMIT:-false}
+        KAFKA_OFFSET_RESET: ${KAFKA_OFFSET_RESET:-earliest}
+        KAFKA_MAX_POLL_RECORDS_CONFIG: ${KAFKA_MAX_POLL_RECORDS_CONFIG:-10}
+        KAFKA_SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_HOST:-schema-registry-template}:${SCHEMA_REGISTRY_PORT:-8081}
+
+        BROADCAST_DRIVER: ${PHP_BROADCAST_DRIVER:-redis-sentinel}
+        CACHE_DRIVER: ${PHP_CACHE_DRIVER:-redis-sentinel}
+        SESSION_DRIVER: ${PHP_SESSION_DRIVER:-redis-sentinel}
+        QUEUE_CONNECTION: ${PHP_QUEUE_CONNECTION:-redis-sentinel}
+
+        REDIS_DRIVER: ${PHP_REDIS_DRIVER:-redis-sentinel}
+        REDIS_HOST: ${REDIS_SENTINEL_HOST:-redis-sentinel}
+        REDIS_PORT: ${REDIS_SENTINEL_PORT:-26379}
+        REDIS_PASSWORD: ${REDIS_SENTINEL_PASSWORD:-redis_password}
+        REDIS_SENTINEL_PASSWORD: ${REDIS_SENTINEL_PASSWORD:-redis_password}
+        REDIS_SENTINEL_SERVICE: ${REDIS_SENTINEL_SERVICE:-redis-master}
+        REDIS_CACHE_DATABASE: ${PHP_REDIS_CACHE_DATABASE:-1}
+        REDIS_SESSION_DATABASE: ${PHP_REDIS_SESSION_DATABASE:-2}
+        REDIS_QUEUE_DATABASE: ${PHP_REDIS_QUEUE_DATABASE:-3}
+    tty: true
+    stopsignal: SIGTERM
+    restart: unless-stopped
+    tmpfs:
+      - /tmp
+    env_file:
+      - server.dev.env
+      - ../../base/redis/redis.env
+      - ../../base/broker/kafka.env
+      - ../../base/broker/zookeeper.env
+      - ../../base/broker/schema-registry.env
+      - ../../base/postgresql/postgres/postgresql.env
+      - ../../base/elasticsearch/elastic/elasticsearch-elastic.env
+    environment:
+      DB_CONNECTION: ${PHP_DB_CONNECTION:-pgsql}
+      DB_HOST: ${PG_MASTER_HOST:-postgres-template-master}
+      DB_PORT: ${PG_MASTER_PORT:-5432}
+      DB_DATABASE: ${POSTGRES_DB:-postgres_db}
+      DB_USERNAME: ${POSTGRES_USER:-postgres_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres_password}
+
+      ELASTICSEARCH_HOST: ${ELASTICSEARCH_ELASTIC_HOST:-elasticsearch-elastic-template}
+      ELASTICSEARCH_PORT: ${ELASTICSEARCH_ELASTIC_PORT:-9200}
+      ELASTICSEARCH_SCHEME: ${ELASTICSEARCH_SCHEME:-null}
+
+      KAFKA_BROKERS: ${KAFKA_SEED_BROKER_HOST:-kafka-seed-broker-template}:2${KAFKA_SEED_BROKER_PORT:-9092}
+      KAFKA_CONSUMER_GROUP_ID: ${KAFKA_CONSUMER_GROUP_ID:-Template-Consumer-Group-Id}
+      KAFKA_CONSUMER_CLIENT_ID: ${KAFKA_CONSUMER_CLIENT_ID:-Template-Consumer-Client-Id}
+      KAFKA_AUTO_COMMIT: ${KAFKA_AUTO_COMMIT:-false}
+      KAFKA_OFFSET_RESET: ${KAFKA_OFFSET_RESET:-earliest}
+      KAFKA_MAX_POLL_RECORDS_CONFIG: ${KAFKA_MAX_POLL_RECORDS_CONFIG:-10}
+      KAFKA_SCHEMA_REGISTRY_URL: ${SCHEMA_REGISTRY_HOST:-schema-registry-template}:${SCHEMA_REGISTRY_PORT:-8081}
+
+      BROADCAST_DRIVER: ${PHP_BROADCAST_DRIVER:-redis-sentinel}
+      CACHE_DRIVER: ${PHP_CACHE_DRIVER:-redis-sentinel}
+      SESSION_DRIVER: ${PHP_SESSION_DRIVER:-redis-sentinel}
+      QUEUE_CONNECTION: ${PHP_QUEUE_CONNECTION:-redis-sentinel}
+
+      REDIS_DRIVER: ${PHP_REDIS_DRIVER:-redis-sentinel}
+      REDIS_HOST: ${REDIS_SENTINEL_HOST:-redis-sentinel}
+      REDIS_PORT: ${REDIS_SENTINEL_PORT:-26379}
+      REDIS_PASSWORD: ${REDIS_SENTINEL_PASSWORD:-redis_password}
+      REDIS_SENTINEL_PASSWORD: ${REDIS_SENTINEL_PASSWORD:-redis_password}
+      REDIS_SENTINEL_SERVICE: ${REDIS_SENTINEL_SERVICE:-redis-master}
+
+      REDIS_CACHE_DATABASE: ${PHP_REDIS_CACHE_DATABASE:-1}
+      REDIS_SESSION_DATABASE: ${PHP_REDIS_SESSION_DATABASE:-2}
+      REDIS_QUEUE_DATABASE: ${PHP_REDIS_QUEUE_DATABASE:-3}
+    volumes:
+      - type: volume
+        source: server-template-data
+        target: /var/lib/php/
+        read_only: true
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "nc",
+          "-zv",
+          "${PHP_SERVER_HOST:-0.0.0.0}",
+          "${PHP_SERVER_PORT:-8000}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+    privileged: true
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    cpu_shares: 4
+    pid: "host"
+    stop_grace_period: 5s
+    networks:
+      - tier-template

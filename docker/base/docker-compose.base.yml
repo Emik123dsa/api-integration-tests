@@ -1,0 +1,89 @@
+# MIT License
+
+# Copyright (c) 2021 Emil Shari <emil.shari87@gmail.com>
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+version: "3.9"
+
+services:
+  server-template:
+    image: php/server-template/base
+    container_name: php-server-template-base
+    extends:
+      file: server/docker-compose.yml
+      service: server-template
+
+  redis-master:
+    image: redis/redis-master/base
+    container_name: redis-redis-master-base
+    extends:
+      file: redis/docker-compose.yml
+      service: redis-master
+
+  redis-replica:
+    image: redis/redis-replica/base
+    container_name: redis-redis-replica-base
+    extends:
+      file: redis/docker-compose.yml
+      service: redis-replica
+
+  redis-sentinel:
+    image: redis/redis-sentinel/base
+    extends:
+      file: redis/docker-compose.yml
+      service: redis-sentinel
+
+  pg-master:
+    image: postgresql/postgres-template-master/base
+    container_name: postgresql-postgres-template-master-base
+    extends:
+      file: postgresql/postgres/docker-compose.yml
+      service: pg-master
+
+  pg-replica:
+    image: postgresql/pg-replica/base
+    container_name: postgresql-pg-replica-base
+    extends:
+      file: postgresql/postgres/docker-compose.yml
+      service: pg-replica
+
+  elasticsearch-elastic-template:
+    container_name: elasticsearch-elastic-template-base
+    extends:
+      file: elasticsearch/elastic/docker-compose.yml
+      service: elasticsearch-elastic-template
+
+  zookeeper-template:
+    container_name: broker-zookeeper-template-base
+    extends:
+      file: broker/docker-compose.yml
+      service: zookeeper-template
+
+  kafka-seed-broker-template:
+    container_name: broker-kafka-template-base
+    extends:
+      file: broker/docker-compose.yml
+      service: kafka-seed-broker-template
+
+  schema-registry-template:
+    container_name: broker-schema-registry-template-base
+    extends:
+      file: broker/docker-compose.yml
+      service: schema-registry-template

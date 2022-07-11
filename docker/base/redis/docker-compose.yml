@@ -1,0 +1,168 @@
+# MIT License
+
+# Copyright (c) 2021 Emil Shari <emil.shari87@gmail.com>
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+version: "3.9"
+
+services:
+  redis-master:
+    hostname: ${REDIS_HOST:-redis-master}
+    image: redis/redis-master/base
+    build:
+      context: .
+      dockerfile: lib/master/Dockerfile.redis-master
+      args:
+        REDIS_PORT: ${REDIS_PORT:-16379}
+        REDIS_HOST: ${REDIS_HOST:-redis-master}
+        REDIS_BIND_ADDRESS: ${REDIS_BIND_ADDRESS:-0.0.0.0}
+        REDIS_PASSWORD: ${REDIS_PASSWORD:-redis_password}
+    pid: host
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    tty: true
+    tmpfs:
+      - /tmp
+    stop_grace_period: 5s
+    volumes:
+      - type: volume
+        source: redis-master-data
+        target: /var/lib/redis/
+    env_file:
+      - redis.env
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "-p",
+          "${REDIS_PORT:-16379}",
+          "-a",
+          "${REDIS_PASSWORD:-redis_password}",
+          "ping",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    cpu_shares: 4
+    networks:
+      - tier-template
+  redis-replica:
+    hostname: ${REDIS_REPLICA_HOST:-redis-replica}
+    image: redis/redis-replica/base
+    build:
+      context: .
+      dockerfile: lib/replica/Dockerfile.redis-replica
+      args:
+        REDIS_REPLICA_HOST: ${REDIS_REPLICA_HOST:-redis-replica}
+        REDIS_REPLICA_PORT: ${REDIS_REPLICA_PORT:-16379}
+        REDIS_REPLICA_PASSWORD: ${REDIS_REPLICA_PASSWORD:-redis_password}
+        REDIS_MASTER_HOST: ${REDIS_MASTER_HOST:-redis-master}
+        REDIS_MASTER_PORT: ${REDIS_MASTER_PORT:-16379}
+        REDIS_MASTER_PASSWORD: ${REDIS_MASTER_PASSWORD:-redis_password}
+    pid: host
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    tty: true
+    tmpfs:
+      - /tmp
+    stop_grace_period: 5s
+    volumes:
+      - type: volume
+        source: redis-replica-data
+        target: /var/lib/redis/
+    env_file:
+      - redis.env
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "-p",
+          "${REDIS_PORT:-16379}",
+          "-a",
+          "${REDIS_PASSWORD:-redis_password}",
+          "ping",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+    depends_on:
+      redis-master:
+        condition: setup_healthy
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    cpu_shares: 4
+    networks:
+      - tier-template
+  redis-sentinel:
+    image: redis/redis-sentinel/base
+    build:
+      context: .
+      dockerfile: lib/sentinel/Dockerfile.redis-sentinel
+      args:
+        REDIS_MASTER_HOST: ${REDIS_MASTER_HOST:-redis-master}
+        REDIS_MASTER_PORT: ${REDIS_MASTER_PORT:-16379}
+        REDIS_MASTER_PASSWORD: ${REDIS_MASTER_PASSWORD:-redis_password}
+        REDIS_SENTINEL_PORT: ${REDIS_SENTINEL_PORT:-26379}
+        REDIS_SENTINEL_PORTS: ${REDIS_SENTINEL_PORTS:-26379-26381}
+        REDIS_SENTINEL_HOST: ${REDIS_SENTINEL_HOST:-redis-sentinel}
+        REDIS_SENTINEL_PASSWORD: ${REDIS_SENTINEL_PASSWORD:-redis_password}
+    pid: host
+    restart: unless-stopped
+    stop_signal: SIGTERM
+
+    tty: true
+    tmpfs:
+      - /tmp
+    stop_grace_period: 5s
+    volumes:
+      - type: volume
+        source: redis-sentinel-data
+        target: /var/lib/redis/
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "-p",
+          "${REDIS_SENTINEL_PORT:-26379}",
+          "-a",
+          "${REDIS_PASSWORD:-redis_password}",
+          "ping",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+    depends_on:
+      redis-master:
+        condition: setup_healthy
+      redis-replica:
+        condition: setup_healthy
+    networks:
+      - tier-template

@@ -1,0 +1,137 @@
+# MIT License
+
+# Copyright (c) 2021 Emil Shari <emil.shari87@gmail.com>
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+version: "3.8"
+
+services:
+  pg-master:
+    hostname: ${PG_MASTER_HOST:-pg-master}
+    image: postgresql/postgres-template-master/base
+    build:
+      context: .
+      dockerfile: lib/master/Dockerfile.pg-master
+      args:
+        PG_REP_USER: ${PG_REP_USER:-rep_user}
+        PG_REP_LIMIT: ${PG_REP_LIMIT:-100}
+        PG_REP_PASSWORD: ${PG_REP_PASSWORD:-rep_password}
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    cpu_shares: 4
+    pid: host
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    tty: true
+    tmpfs:
+      - /tmp
+    stop_grace_period: 5s
+    volumes:
+      - type: volume
+        source: pg-master-data
+        target: /var/lib/postgresql/data
+        read_only: false
+    env_file:
+      - postgresql.env
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-U",
+          "${POSTGRES_USER:-postgres_user}",
+          "-h",
+          "${PG_MASTER_HOST:-pg-master}",
+          "-p",
+          "5432",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-postgres_db}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_password}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres_user}
+      PG_REP_USER: ${PG_REP_USER:-rep_user}
+      PG_REP_LIMIT: ${PG_REP_LIMIT:-100}
+      PG_REP_PASSWORD: ${PG_REP_PASSWORD:-rep_password}
+    networks:
+      - tier-template
+  pg-replica:
+    image: postgresql/pg-replica/base
+    build:
+      context: .
+      dockerfile: lib/replica/Dockerfile.pg-replica
+      args:
+        PG_REP_USER: ${PG_REP_USER:-rep_user}
+        PG_REP_PASSWORD: ${PG_REP_PASSWORD:-rep_password}
+        PG_MASTER_PORT: ${PG_MASTER_PORT:-5432}
+        PG_MASTER_HOST: ${PG_MASTER_HOST:-pg-master}
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    cpu_shares: 4
+    pid: host
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    volumes:
+      - type: volume
+        source: pg-replica-data
+        target: /var/lib/postgresql/data
+        read_only: false
+    tty: true
+    tmpfs:
+      - /tmp
+    stop_grace_period: 5s
+    depends_on:
+      pg-master:
+        condition: service_started
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "pg_isready",
+          "-U",
+          "${POSTGRES_USER:-postgres_user}",
+          "-h",
+          "${PG_MASTER_HOST:-pg-master}",
+          "-p",
+          "5432",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 60
+    env_file:
+      - postgresql.env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-postgres_db}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_password}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres_user}
+      PG_REP_USER: ${PG_REP_USER:-rep_user}
+      PG_REP_PASSWORD: ${PG_REP_PASSWORD:-rep_password}
+      PG_MASTER_PORT: ${PG_MASTER_PORT:-5432}
+      PG_MASTER_HOST: ${PG_MASTER_HOST:-pg-master}
+    networks:
+      - tier-template

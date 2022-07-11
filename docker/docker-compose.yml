@@ -1,0 +1,94 @@
+# MIT License
+
+# Copyright (c) 2021 Emil Shari <emil.shari87@gmail.com>
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+version: "3.9"
+
+services:
+  server-template:
+    image: php/server-template
+    container_name: php-server-template
+
+  redis-master:
+    image: redis/redis-master
+    container_name: redis-redis-master
+
+  redis-replica:
+    image: redis/redis-replica
+    container_name: redis-redis-replica
+
+  redis-sentinel:
+    image: redis/redis-sentinel
+
+  postgres-template-master:
+    image: postgresql/postgres-template-master
+    container_name: postgresql-postgres-template-master
+
+  pg-replica:
+    image: postgresql/pg-replica
+    container_name: postgresql-pg-replica
+
+  elasticsearch-elastic-template:
+    image: elasticsearch/elastic-template
+    container_name: elasticsearch-elastic-template
+
+  zookeeper-template:
+    image: broker/zookeeper-template/dev
+    container_name: broker-zookeeper-template-dev
+
+  kafka-seed-broker-template:
+    image: broker/kafka-seed-template/dev
+    container_name: broker-kafka-seed-template-dev
+
+  schema-registry-template:
+    image: broker/schema-registry-template/dev
+    container_name: broker-schema-registry-template-dev
+
+volumes:
+  server-template-data:
+    driver: local
+
+  redis-master-data:
+    driver: local
+  redis-replica-data:
+    driver: local
+  redis-sentinel-data:
+    driver: local
+
+  pg-master-data:
+    driver: local
+  pg-replica-data:
+    driver: local
+
+  elasticsearch-elastic-template-data:
+    driver: local
+
+  zookeeper-template-data:
+    driver: local
+  zookeeper-template-log:
+    driver: local
+
+  kafka-seed-broker-template-data:
+    driver: local
+
+networks:
+  tier-template:
+    driver: bridge

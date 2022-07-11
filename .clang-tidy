@@ -1,0 +1,11 @@
+---
+Language: Cpp
+IndentWidth: 4
+TabWidth: 4
+UseTab: ForIndentation
+AlignConsecutiveAssignments: true
+BreakBeforeBraces: Linux
+ColumnLimit: 0
+MacroBlockBegin: '^ZEND_BEGIN_ARG_INFO'
+MacroBlockEnd: '^ZEND_END_ARG_INFO'
+...

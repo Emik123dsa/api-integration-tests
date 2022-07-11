@@ -1,0 +1,60 @@
+# MIT License
+
+# Copyright (c) 2021 Emil Shari <emil.shari87@gmail.com>
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+version: "3.9"
+
+services:
+  elasticsearch-elastic-template:
+    hostname: ${ELASTICSEARCH_ELASTIC_HOST:-elasticsearch-elastic-template}
+    image: elasticsearch:${ELASTICSEARCH_ELASTIC_VERSION:-7.14.2}
+    pid: host
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    tty: true
+    tmpfs:
+      - /tmp
+    stop_grace_period: 5s
+    volumes:
+      - type: volume
+        source: elasticsearch-elastic-template-data
+        target: /usr/share/elasticsearch/data
+        read_only: false
+
+    env_file:
+      - elasticsearch-elastic.env
+
+    environment:
+      cluster.name: ${ELASTICSEARCH_ELASTIC_CLUSTER_NAME:-template-cluster}
+      bootstrap.memory_lock: ${ELASTICSEARCH_ELASTIC_BOOTSTRAP_MEMORY_LOCK:-true}
+      ES_JAVA_OPTS: ${ELASTICSEARCH_ELASTIC_JAVA_OPTS:--Xms512m -Xmx512m}
+      discovery.type: ${ELASTICSEARCH_ELASTIC_DISCOVERY_TYPE:-single-node}
+      xpack.security.enabled: ${ELASTICSEARCH_ELASTIC_XPACK_SECURITY_ENABLED:-false}
+
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+
+    cpu_shares: 4
+    networks:
+      - tier-template

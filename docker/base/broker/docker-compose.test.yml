@@ -1,0 +1,141 @@
+# MIT License
+
+# Copyright (c) 2021 Emil Shari <emil.shari87@gmail.com>
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+version: "3.9"
+
+services:
+  zookeeper-template:
+    hostname: ${ZOOKEEPER_HOST:-zookeeper-template}
+    image: confluentinc/cp-zookeeper:${ZOOKEEPER_VERSION:-7.0.0}
+    pid: host
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    tty: true
+    tmpfs:
+      - /tmp
+    stop_grace_period: 5s
+    env_file:
+      - zookeeper.env
+    volumes:
+      - type: volume
+        source: zookeeper-template-data
+        target: /var/lib/zookeeper/data
+        read_only: false
+      - type: volume
+        source: zookeeper-template-log
+        target: /var/lib/zookeeper/log
+        read_only: false
+    env_file:
+      - zookeeper.env
+    environment:
+      ZOOKEEPER_TICK_TIME: ${ZOOKEEPER_TICK_TIME:-2000}
+      ZOOKEEPER_CLIENT_PORT: ${ZOOKEEPER_CLIENT_PORT:-2181}
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    cpu_shares: 4
+    networks:
+      - tier-template
+
+  kafka-seed-broker-template:
+    hostname: ${KAFKA_HOST:-kafka-seed-broker-template}
+    image: confluentinc/cp-server:${KAFKA_VERSION:-7.0.0}
+    pid: host
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    tty: true
+    tmpfs:
+      - /tmp
+    stop_grace_period: 5s
+    env_file:
+      - zookeeper.env
+      - kafka.env
+      - schema-registry.env
+    depends_on:
+      zookeeper-template:
+        condition: service_started
+    volumes:
+      - type: volume
+        source: kafka-seed-broker-template-data
+        target: /var/lib/kafka/data
+        read_only: false
+    environment:
+      KAFKA_BROKER_ID: ${KAFKA_BROKER_ID:-1}
+      KAFKA_ZOOKEEPER_CONNECT: "${ZOOKEEPER_HOST:-zookeeper-template}:${ZOOKEEPER_CLIENT_PORT:-2181}"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: ${KAFKA_LISTENER_SECURITY_PROTOCOL_MAP:-PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT}
+      KAFKA_ADVERTISED_LISTENERS: ${KAFKA_ADVERTISED_LISTENERS:-PLAINTEXT://${KAFKA_HOST:-kafka-seed-broker-template}:2${KAFKA_PORT:-9092},PLAINTEXT_HOST://${KAFKA_JMX_HOSTNAME:-localhost}:${KAFKA_PORT:-9092}}
+      KAFKA_METRIC_REPORTERS: ${KAFKA_METRIC_REPORTERS:-io.confluent.metrics.reporter.ConfluentMetricsReporter}
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: ${KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR:-1}
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: ${KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS:-0}
+      KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR: ${KAFKA_CONFLUENT_LICENSE_TOPIC_REPLICATION_FACTOR:-1}
+      KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR: ${KAFKA_CONFLUENT_BALANCER_TOPIC_REPLICATION_FACTOR:-1}
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: ${KAFKA_TRANSACTION_STATE_LOG_MIN_ISR:-1}
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: ${KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR:-1}
+      KAFKA_JMX_PORT: ${KAFKA_JMX_PORT:-9101}
+      KAFKA_JMX_HOSTNAME: ${KAFKA_JMX_HOSTNAME:-localhost}
+      KAFKA_CONFLUENT_SCHEMA_REGISTRY_URL: http://${SCHEMA_REGISTRY_HOST:-schema-registry-template}:${SCHEMA_REGISTRY_PORT:-8081}
+      KAFKA_LOG4J_ROOT_LOGLEVEL: ${KAFKA_LOG4J_ROOT_LOGLEVEL:-INFO}
+      KAFKA_LOG4J_LOGGERS: ${KAFKA_LOG4J_LOGGERS:-kafka.controller=INFO,kafka.producer.async.DefaultEventHandler=INFO,state.change.logger=INFO}
+      CONFLUENT_METRICS_REPORTER_BOOTSTRAP_SERVERS: ${KAFKA_HOST:-kafka-seed-broker-template}:2${KAFKA_PORT:-9092}
+      CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS: ${CONFLUENT_METRICS_REPORTER_TOPIC_REPLICAS:-1}
+      CONFLUENT_METRICS_ENABLE: ${CONFLUENT_METRICS_ENABLE:-true}
+      CONFLUENT_SUPPORT_CUSTOMER_ID: ${CONFLUENT_SUPPORT_CUSTOMER_ID:-anonymous}
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    cpu_shares: 4
+    networks:
+      - tier-template
+  schema-registry-template:
+    image: confluentinc/cp-schema-registry:${SCHEMA_REGISTRY_VERSION:-7.0.0}
+    hostname: ${SCHEMA_REGISTRY_HOST:-schema-registry-template}
+    pid: host
+    restart: unless-stopped
+    stop_signal: SIGTERM
+    tty: true
+    tmpfs:
+      - /tmp
+    stop_grace_period: 5s
+    env_file:
+      - kafka.env
+      - schema-registry.env
+    depends_on:
+      kafka-seed-broker-template:
+        condition: service_started
+      zookeeper-template:
+        condition: service_started
+    environment:
+      SCHEMA_REGISTRY_HOST_NAME: ${SCHEMA_REGISTRY_HOST_NAME:-${SCHEMA_REGISTRY_HOST:-schema-registry-template}}
+      SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS: ${SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS:-${KAFKA_HOST:-kafka-seed-broker-template}:2${KAFKA_PORT:-9092}}
+      SCHEMA_REGISTRY_LISTENERS: ${SCHEMA_REGISTRY_LISTENERS:-http://0.0.0.0:${SCHEMA_REGISTRY_PORT:-8081}}
+    ulimits:
+      nproc: 65535
+      nofile:
+        soft: 262144
+        hard: 262144
+    cpu_shares: 4
+    networks:
+      - tier-template

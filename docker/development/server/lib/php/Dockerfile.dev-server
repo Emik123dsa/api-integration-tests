@@ -1,0 +1,176 @@
+# MIT License
+
+# Copyright (c) 2021 Emil Shari <emil.shari87@gmail.com>
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+FROM phing/phing:3.0-nightly as phing
+
+FROM composer:2.1.11 as composer
+
+FROM php/server-template/base as server-template-dev
+
+LABEL maintainer="Emil Shari <emil.shari87@gmail.com>"
+
+ARG SERVER_ENV
+ARG SERVER_PORT
+ARG SERVER_HOST
+
+ARG DB_HOST
+ARG DB_PORT
+ARG DB_DATABASE
+ARG DB_USERNAME
+ARG DB_PASSWORD
+
+ARG ELASTICSEARCH_HOST
+ARG ELASTICSEARCH_PORT
+ARG ELASTICSEARCH_SCHEME
+
+ARG KAFKA_BROKERS
+ARG KAFKA_CONSUMER_GROUP_ID
+ARG KAFKA_CONSUMER_CLIENT_ID
+ARG KAFKA_AUTO_COMMIT
+ARG KAFKA_OFFSET_RESET
+ARG KAFKA_MAX_POLL_RECORDS_CONFIG
+ARG KAFKA_SCHEMA_REGISTRY_URL
+
+ARG CACHE_DRIVER 
+ARG SESSION_DRIVER 
+ARG QUEUE_CONNECTION
+ARG BROADCAST_DRIVER
+
+ARG REDIS_DRIVER
+ARG REDIS_HOST
+ARG REDIS_PORT
+ARG REDIS_PASSWORD
+ARG REDIS_SENTINEL_PASSWORD
+ARG REDIS_SENTINEL_SERVICE
+
+ARG REDIS_CACHE_DATABASE
+ARG REDIS_SESSION_DATABASE
+ARG REDIS_QUEUE_DATABASE
+
+ENV DB_HOST ${DB_HOST}
+ENV DB_PORT ${DB_PORT}
+ENV DB_DATABASE ${DB_DATABASE}
+ENV DB_USERNAME ${DB_USERNAME}
+ENV DB_PASSWORD ${DB_PASSWORD}
+
+ENV ELASTICSEARCH_HOST ${ELASTICSEARCH_HOST}
+ENV ELASTICSEARCH_PORT ${ELASTICSEARCH_PORT}
+ENV ELASTICSEARCH_SCHEME ${ELASTICSEARCH_SCHEME}
+
+ENV KAFKA_BROKERS ${KAFKA_BROKERS}
+ENV KAFKA_CONSUMER_GROUP_ID ${KAFKA_CONSUMER_GROUP_ID}
+ENV KAFKA_CONSUMER_CLIENT_ID  ${KAFKA_CONSUMER_CLIENT_ID}
+ENV KAFKA_AUTO_COMMIT ${KAFKA_AUTO_COMMIT}
+ENV KAFKA_OFFSET_RESET ${KAFKA_OFFSET_RESET}
+ENV KAFKA_MAX_POLL_RECORDS_CONFIG ${KAFKA_MAX_POLL_RECORDS_CONFIG}
+ENV KAFKA_SCHEMA_REGISTRY_URL ${KAFKA_SCHEMA_REGISTRY_URL}
+
+ENV BROADCAST_DRIVER ${BROADCAST_DRIVER}
+ENV CACHE_DRIVER ${CACHE_DRIVER}
+ENV SESSION_DRIVER ${SESSION_DRIVER}
+ENV QUEUE_CONNECTION ${QUEUE_CONNECTION}
+
+ENV REDIS_DRIVER ${REDIS_DRIVER}
+ENV REDIS_HOST ${REDIS_HOST}
+ENV REDIS_PORT ${REDIS_PORT}
+ENV REDIS_PASSWORD ${REDIS_PASSWORD}
+ENV REDIS_SENTINEL_PASSWORD ${REDIS_SENTINEL_PASSWORD}
+ENV REDIS_SENTINEL_SERVICE ${REDIS_SENTINEL_SERVICE}
+ENV REDIS_CACHE_DATABASE ${REDIS_CACHE_DATABASE}
+ENV REDIS_SESSION_DATABASE ${REDIS_SESSION_DATABASE}
+ENV REDIS_QUEUE_DATABASE ${REDIS_QUEUE_DATABASE}
+
+ENV PHP_SERVER_ENV ${SERVER_ENV}
+ENV PHP_SERVER_PORT ${SERVER_PORT}
+ENV PHP_SERVER_HOST ${SERVER_HOST}
+
+ENV SWOOLE_HTTP_HOST ${PHP_SERVER_HOST}
+ENV SWOOLE_HTTP_PORT ${PHP_SERVER_PORT}
+
+VOLUME /tmp
+
+# RUN pecl install xdebug-2.9.0 && docker-php-ext-enable xdebug
+# COPY config/xdebug.ini /usr/local/etc/php/conf.d/xdebug.ini
+# RUN chown www-data:www-data /usr/local/etc/php/conf.d/xdebug.ini && \
+#     chmod a+x /usr/local/etc/php/conf.d/xdebug.ini
+
+COPY docker/dev/server/config/redis.ini /usr/local/etc/php/conf.d/redis.ini
+RUN chown www-data:www-data /usr/local/etc/php/conf.d/redis.ini && \
+    chmod a+x /usr/local/etc/php/conf.d/redis.ini
+
+RUN usermod -u 1000 www-data
+
+RUN pecl install apcu && docker-php-ext-enable apcu
+
+COPY --from=composer --chown=www-data:www-data  /usr/bin/composer /usr/local/bin/composer 
+
+RUN apt-get install -y util-linux; exit 0
+
+ADD https://www.phing.info/get/phing-latest.phar /usr/local/bin/phing
+
+RUN chmod +x /usr/local/bin/phing && \
+    chown -R www-data:www-data /usr/local/bin/phing
+
+# RUN touch /tmp/xdebug.log
+# RUN chmod a+rwx /tmp/xdebug.log
+
+WORKDIR /var/www/template/server/${PHP_SERVER_ENV}
+
+ONBUILD RUN rm -rf /var/www/template/server/${PHP_SERVER_ENV}/bootstrap/cache/
+ONBUILD RUN mkdir -p /var/www/template/server/${PHP_SERVER_ENV}/bootstrap/cache/
+ONBUILD RUN chmod -R a+rwx /var/www/template/server/${PHP_SERVER_ENV}/bootstrap/cache/
+
+ONBUILD RUN rm -rf /var/www/template/server/${PHP_SERVER_ENV}/storage/logs
+ONBUILD RUN mkdir -p /var/www/template/server/${PHP_SERVER_ENV}/storage/logs
+ONBUILD RUN chmod -R a+rwx  /var/www/template/server/${PHP_SERVER_ENV}/storage/logs
+
+ONBUILD RUN rm -rf /var/www/template/server/${PHP_SERVER_ENV}/storage/framework/views/
+ONBUILD RUN mkdir -p /var/www/template/server/${PHP_SERVER_ENV}/storage/framework/views/
+ONBUILD RUN chmod -R a+rwx /var/www/template/server/${PHP_SERVER_ENV}/storage/framework/views/
+
+ONBUILD RUN rm -rf /var/www/template/server/${PHP_SERVER_ENV}/storage/framework/testing/
+ONBUILD RUN mkdir -p /var/www/template/server/${PHP_SERVER_ENV}/storage/framework/testing/
+ONBUILD RUN chmod -R a+rwx /var/www/template/server/${PHP_SERVER_ENV}/storage/framework/testing/
+
+ONBUILD RUN rm -rf /var/www/template/server/${PHP_SERVER_ENV}/storage/framework/sessions/
+ONBUILD RUN mkdir -p /var/www/template/server/${PHP_SERVER_ENV}/storage/framework/sessions/
+ONBUILD RUN chmod -R a+rwx /var/www/template/server/${PHP_SERVER_ENV}/storage/framework/sessions/
+
+ONBUILD RUN rm -rf /var/www/template/server/${PHP_SERVER_ENV}/storage/framework/cache/
+ONBUILD RUN mkdir -p /var/www/template/server/${PHP_SERVER_ENV}/storage/framework/cache/
+ONBUILD RUN mkdir -p /var/www/template/server/${PHP_SERVER_ENV}/storage/framework/cache/data/
+ONBUILD RUN chmod -R a+rwx /var/www/template/server/${PHP_SERVER_ENV}/storage/framework/cache/
+
+ONBUILD RUN chmod -R a+rwx /var/www/template/server/${PHP_SERVER_ENV}
+ONBUILD RUN chown -R www-data:www-data /var/www/template/server/${PHP_SERVER_ENV}
+
+EXPOSE $PHP_SERVER_PORT/TCP
+
+STOPSIGNAL SIGTERM
+
+ENTRYPOINT composer install -o --no-autoloader && \
+    composer -o dump-autoload && \
+    chown -R www-data:www-data /var/www/template/server/${PHP_SERVER_ENV} && \
+    php artisan config:clear && php artisan config:cache && \
+    php artisan migrate && \
+    # php artisan swoole:http start
+    php artisan serve --host=${PHP_SERVER_HOST} --port=${PHP_SERVER_PORT}

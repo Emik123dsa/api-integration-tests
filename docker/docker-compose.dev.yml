@@ -1,0 +1,150 @@
+# MIT License
+
+# Copyright (c) 2021 Emil Shari <emil.shari87@gmail.com>
+
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+version: "3.9"
+
+# ports:
+#       - ${REDIS_SENTINEL_PORTS:-26379-26381}:${REDIS_SENTINEL_PORTS:-26379-26381}
+#     expose:
+#       - ${REDIS_SENTINEL_PORTS:-26379-26381}
+
+services:
+  server-template:
+    image: php/server-template/dev
+    container_name: php-server-template-dev
+    extends:
+      file: dev/docker-compose.dev.yml
+      service: server-template
+    volumes:
+      - type: bind
+        source: ../backend
+        target: /var/www/template/server/dev/
+        read_only: false
+    ports:
+      - protocol: TCP
+        published: ${PHP_SERVER_PORT:-8000}
+        target: ${PHP_SERVER_PORT:-8000}
+    expose:
+      - ${PHP_SERVER_PORT:-8000}
+
+  redis-master:
+    image: redis/redis-master/dev
+    container_name: redis-redis-master-dev
+    extends:
+      file: base/docker-compose.base.yml
+      service: redis-master
+    ports:
+      - ${REDIS_MASTER_PORT:-16379}:${REDIS_MASTER_PORT:-16379}
+    expose:
+      - ${REDIS_MASTER_PORT:-16379}
+
+  redis-replica:
+    image: redis/redis-replica/dev
+    container_name: redis-redis-replica-dev
+    extends:
+      file: base/docker-compose.base.yml
+      service: redis-replica
+
+  redis-sentinel:
+    image: redis/redis-sentinel/dev
+    extends:
+      file: base/docker-compose.base.yml
+      service: redis-sentinel
+
+  postgres-template-master:
+    image: postgresql/postgres-template-master/dev
+    container_name: postgresql-postgres-template-master-dev
+    extends:
+      file: base/docker-compose.base.yml
+      service: pg-master
+    ports:
+      - protocol: TCP
+        published: ${PG_MASTER_PORT:-5432}
+        target: ${PG_MASTER_PORT:-5432}
+    expose:
+      - ${PG_MASTER_PORT:-5432}
+
+  pg-replica:
+    image: postgresql/pg-replica/dev
+    container_name: postgresql-pg-replica-dev
+    extends:
+      file: base/docker-compose.base.yml
+      service: pg-replica
+
+  elasticsearch-elastic-template:
+    container_name: elasticsearch-elastic-template-dev
+    extends:
+      file: base/docker-compose.base.yml
+      service: elasticsearch-elastic-template
+    ports:
+      - protocol: TCP
+        published: ${ELASTICSEARCH_ELASTIC_PORT:-9200}
+        target: ${ELASTICSEARCH_ELASTIC_PORT:-9200}
+      - protocol: TCP
+        published: ${ELASTICSEARCH_ELASTIC_CLUSTER_PORT:-9300}
+        target: ${ELASTICSEARCH_ELASTIC_PORT:-9300}
+    expose:
+      - ${ELASTICSEARCH_ELASTIC_PORT:-9200}
+      - ${ELASTICSEARCH_ELASTIC_CLUSTER_PORT:-9300}
+
+  zookeeper-template:
+    container_name: broker-zookeeper-template-dev
+    extends:
+      file: base/docker-compose.base.yml
+      service: zookeeper-template
+    ports:
+      - protocol: TCP
+        published: ${ZOOKEEPER_CIENT_PORT:-2181}
+        target: ${ZOOKEEPER_CIENT_PORT:-2181}
+    expose:
+      - ${ZOOKEEPER_CIENT_PORT:-2181}
+
+  kafka-seed-broker-template:
+    container_name: broker-kafka-seed-template-dev
+    extends:
+      file: base/docker-compose.base.yml
+      service: kafka-seed-broker-template
+    ports:
+      - protocol: TCP
+        published: 2${KAFKA_BROKER_PORT:-9092}
+        target: 2${KAFKA_BROKER_PORT:-9092}
+      - protocol: TCP
+        published: ${KAFKA_BROKER_PORT:-9092}
+        target: ${KAFKA_BROKER_PORT:-9092}
+      - protocol: TCP
+        published: ${KAFKA_JMX_PORT:-9101}
+        target: ${KAFKA_JMX_PORT:-9101}
+    expose:
+      - ${KAFKA_BROKER_PORT:-9092}
+      - ${KAFKA_JMX_PORT:-9101}
+
+  schema-registry-template:
+    container_name: broker-schema-registry-template-dev
+    extends:
+      file: base/docker-compose.base.yml
+      service: schema-registry-template
+    ports:
+      - protocol: TCP
+        published: ${SCHEMA_REGISTRY_PORT:-8081}
+        target: ${SCHEMA_REGISTRY_PORT:-8081}
+    expose:
+      - ${SCHEMA_REGISTRY_PORT:-8081}
